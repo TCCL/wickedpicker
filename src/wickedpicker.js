@@ -42,7 +42,7 @@
             hoverState: 'hover-state',
             title: 'Timepicker',
             showSeconds: false,
-            timeSeparator: ' : ',
+            timeSeparator: ':',
             secondsInterval: 1,
             minutesInterval: 1,
             beforeShow: null,
@@ -78,10 +78,10 @@
         //Create a new Date object based on the default or passing in now value
         var time = this.timeArrayFromString(this.options.now);
         this.options.now = new Date(today.getFullYear(), today.getMonth(), today.getDate(), time[0], time[1], time[2]);
-        this.selectedHour = this.parseHours(this.options.now.getHours());
-        this.selectedMin = this.parseSecMin(this.options.now.getMinutes());
-        this.selectedSec = this.parseSecMin(this.options.now.getSeconds());
-        this.selectedMeridiem = this.parseMeridiem(this.options.now.getHours());
+        this.repr = { hour:0, minute:0, second:0 }; // Always keep representation in 24 hour numeric format.
+        this.setHours(this.options.now.getHours());
+        this.setMinutes(this.options.now.getMinutes());
+        this.setSeconds(this.options.now.getSeconds());
         this.setHoverState();
         this.attach(element);
         this.setText(element);
@@ -105,23 +105,7 @@
             $(element).attr({'aria-showingpicker': 'true', 'tabindex': -1});
             this.setText(element);
             this.showHideMeridiemControl();
-            if (this.getText(element) !== this.getTime()) {
-
-                // Check meridiem 
-                var text = this.getText(element);
-                var meridiem = /\s\w\w$/.test(text) ? text.substr(-2, 2) : null;
-                var inputTime = text.replace(/\s\w\w$/, '').split(this.options.timeSeparator);
-                var newTime = {};
-                newTime.hours = inputTime[0];
-                newTime.minutes = inputTime[1];
-                if (this.options.showSeconds) {
-                    newTime.seconds = inputTime[2];
-                    newTime.meridiem = meridiem;
-                } else {
-                    newTime.meridiem = meridiem;
-                }
-                this.setTime(newTime);
-            }
+            this.setTime();
             this.timepicker.css({
                 'z-index': this.element.css('z-index') + 1,
                 position: 'absolute',
@@ -141,8 +125,8 @@
          * Hides the timepicker that is currently shown if it is not part of the timepicker
          *
          * @param {Object} The DOM object being clicked on the page
-         * 
-         * BeinnLora: added trigger function to call on closing/hiding timepicker. 
+         *
+         * BeinnLora: added trigger function to call on closing/hiding timepicker.
          */
         hideTimepicker: function (element) {
             this.timepicker.hide();
@@ -227,7 +211,6 @@
                 }
             });
 
-
             //Handle click events for closing Wickedpicker
             var clickHandler = function (event) { //TODO: Fix double firing
                 //Only fire the hide event when you have to
@@ -235,20 +218,21 @@
                     //Clicking the X
                     if ($(event.target).is(self.close)) {
                       self.hideTimepicker(window.lastTimePickerControl);
-                    } else if ($(event.target).closest(self.timepicker).length || $(event.target).closest($('.hasWickedpicker')).length) { //Clicking the Wickedpicker or one of it's inputs
-                      event.stopPropagation();
+                    } else if ($(event.target).closest(self.timepicker).length || $(event.target).closest($('.hasWickedpicker')).length) {
+                        //Clicking the Wickedpicker or one of it's inputs
+                        event.stopPropagation();
                     } else {   //Everything else
-                      if (typeof self.options.onClickOutside === 'function') {
-                        self.options.onClickOutside();
-                      }
-                      else {
-                        console.warn("Type of onClickOutside must be a function");
-                      }
+                        if (typeof self.options.onClickOutside === 'function') {
+                            self.options.onClickOutside();
+                        }
+                        else {
+                            console.warn("Type of onClickOutside must be a function");
+                        }
 
-                      if (!self.options.closeOnClickOutside) {
-                        return;
-                      }
-                      self.hideTimepicker(window.lastTimePickerControl);
+                        if (!self.options.closeOnClickOutside) {
+                            return;
+                        }
+                        self.hideTimepicker(window.lastTimePickerControl);
                     }
                     window.lastTimePickerControl = null;
                 }
@@ -257,7 +241,7 @@
         },
 
         /**
-         * Added keyboard functionality to improve usabil
+         * Attach keyboard functionality to improve usability.
          */
         attachKeyboardEvents: function () {
             $(document).on('keydown', $.proxy(function (event) {
@@ -297,17 +281,16 @@
         },
 
         /*
-         * Set the time on the timepicker
+         * Set the time on the timepicker to that stored in its internal
+         * representation.
          *
          * @param {object} The date being set
          */
-        setTime: function (time) {
-            this.setHours(time.hours);
-            this.setMinutes(time.minutes);
-            this.setMeridiem(time.meridiem);
-            if (this.options.showSeconds) {
-                this.setSeconds(time.seconds);
-            }
+        setTime: function () {
+            this.hoursElem.text(this.getHours());
+            this.minutesElem.text(this.getMinutes());
+            this.secondsElem.text(this.getSeconds());
+            this.meridiemElem.text(this.getMeridiem());
         },
 
         /*
@@ -318,27 +301,23 @@
         },
 
         /*
-         * Set the timpicker's hour(s) value
+         * Set the timpicker's hour(s) value using 24-hour format.
          *
          * @param {string} hours
          */
         setHours: function (hours) {
-            var hour = new Date();
-            hour.setHours(hours);
-            var hoursText = this.parseHours(hour.getHours());
-            this.hoursElem.text(hoursText);
-            this.selectedHour = hoursText;
+            this.repr.hour = Math.abs(Number(hours) % 24);
+            this.hoursElem.text(this.getHours());
+            this.meridiemElem.text(this.getMeridiem());
         },
 
         /*
-         * Get the hour(s) value from the timepicker
+         * Get the hour(s) value as a string from the timepicker in the configured format.
          *
          * @return {integer}
          */
         getHours: function () {
-            var hours = new Date();
-            hours.setHours(this.hoursElem.text());
-            return hours.getHours();
+            return this.parseHours(this.repr.hour);
         },
 
         /*
@@ -358,25 +337,18 @@
          * @param {string} minutes
          */
         setMinutes: function (minutes) {
-            var minute = new Date();
-            minute.setMinutes(minutes);
-            var minutesText = minute.getMinutes();
-            var min = this.parseSecMin(minutesText);
-            this.minutesElem.text(min);
-            this.selectedMin = min;
+            this.repr.minute = Math.abs(Number(minutes) % 60);
+            this.minutesElem.text(this.getMinutes());
         },
 
         /*
-         * Get the minutes value from the timepicker
+         * Get the minutes value from the timepicker as a string.
          *
          * @return {integer}
          */
         getMinutes: function () {
-            var minutes = new Date();
-            minutes.setMinutes(this.minutesElem.text());
-            return minutes.getMinutes();
+            return this.parseSecMin(this.repr.minute);
         },
-
 
         /*
          * Return a human-readable minutes/seconds value
@@ -390,29 +362,12 @@
         },
 
         /*
-         * Set the timepicker's meridiem value, AM or PM
-         *
-         * @param {string} The new meridiem
-         */
-        setMeridiem: function (inputMeridiem) {
-            var newMeridiem = '';
-            if (inputMeridiem === undefined) {
-                var meridiem = this.getMeridiem();
-                newMeridiem = (meridiem === 'PM') ? 'AM' : 'PM';
-            } else {
-                newMeridiem = inputMeridiem;
-            }
-            this.meridiemElem.text(newMeridiem);
-            this.selectedMeridiem = newMeridiem;
-        },
-
-        /*
          * Get the timepicker's meridiem value, AM or PM
          *
          * @return {string}
          */
         getMeridiem: function () {
-            return this.meridiemElem.text();
+            return this.repr.hour > 11 ? 'PM' : 'AM';
         },
 
         /*
@@ -421,23 +376,17 @@
          * @param {string} seconds
          */
         setSeconds: function (seconds) {
-            var second = new Date();
-            second.setSeconds(seconds);
-            var secondsText = second.getSeconds();
-            var sec = this.parseSecMin(secondsText);
-            this.secondsElem.text(sec);
-            this.selectedSec = sec;
+            this.repr.second = Math.abs(Number(seconds) % 60);
+            this.secondsElem.text(this.getSeconds());
         },
 
         /*
-         * Get the timepicker's seconds value
+         * Get the timepicker's seconds value as a string.
          *
          * return {string}
          */
         getSeconds: function () {
-            var seconds = new Date();
-            seconds.setSeconds(this.secondsElem.text());
-            return seconds.getSeconds();
+            return this.parseSecMin(this.repr.second);
         },
 
         /*
@@ -492,25 +441,25 @@
             var target = (operator === '+') ? clicked.nextSibling : clicked.previousSibling;
             var targetClass = $(target).attr('class');
             if (targetClass.endsWith('hours')) {
-                this.setHours(eval(this.getHours() + operator + 1));
+                this.setHours(eval(this.repr.hour + operator + 1));
             } else if (targetClass.endsWith('minutes')) {
-                this.setMinutes(eval(this.getMinutes() + operator + this.options.minutesInterval));
+                this.setMinutes(eval(this.repr.minute + operator + this.options.minutesInterval));
             } else if (targetClass.endsWith('seconds')) {
-                this.setSeconds(eval(this.getSeconds() + operator + this.options.secondsInterval));
+                this.setSeconds(eval(this.repr.second + operator + this.options.secondsInterval));
             } else {
-                this.setMeridiem();
+                // Update the meridiem indirectly by changing the hours representation.
+                this.setHours(eval(this.repr.hour + 12));
             }
             this.setText(input);
         },
 
-
         /*
-         * Sets the give input's text to the current timepicker's time
+         * Sets the given input's text to the current timepicker's time
          *
          * @param {object} The input element
          */
         setText: function (input) {
-            $(input).val(this.formatTime(this.selectedHour, this.selectedMin, this.selectedMeridiem, this.selectedSec)).change();
+            $(input).val(this.formatTime(this.getHours(), this.getMinutes(), this.getMeridiem(), this.getSeconds())).change();
         },
 
         /*
@@ -535,9 +484,6 @@
          */
         formatTime: function (hour, min, meridiem, seconds) {
             var formattedTime = hour + this.options.timeSeparator + min;
-            if (this.options.twentyFour) {
-                formattedTime = hour + this.options.timeSeparator  + min;
-            }
             if (this.options.showSeconds) {
                 formattedTime += this.options.timeSeparator  + seconds;
             }
@@ -553,7 +499,7 @@
         setHoverState: function () {
             var self = this;
             if (!isMobile()) {
-                $(this.up).add(this.down).add(this.close).hover(function () {
+                $(this.up).add(this.down).add(this.close).hover(function() {
                     $(this).toggleClass(self.options.hoverState);
                 });
             }
@@ -595,11 +541,20 @@
 
         //public functions
         /*
-         * Returns the requested input element's value
+         * Returns the requested input element's value as a formatted time string
          */
-        _time: function () {
+        _getTimeString: function (params) {
             var inputValue = $(this.element).val();
-            return (inputValue === '') ? this.formatTime(this.selectedHour, this.selectedMin, this.selectedMeridiem, this.selectedSec) : inputValue;
+            return (inputValue === '') ? this.formatTime(this.getHours(), this.getMinutes(), this.getMeridiem(), this.getSeconds()) : inputValue;
+        },
+        _getTimeComponents: function (params) {
+            var data = {
+                hour: this.repr.hour,
+                minute: this.repr.minute,
+                second: this.repr.second
+            };
+
+            return data;
         },
         _setTimeFromString: function (params) {
             if (!params.stringTime) {
@@ -609,15 +564,14 @@
 
             var time = this.timeArrayFromString(this.options.now);
             this.options.now = new Date(today.getFullYear(), today.getMonth(), today.getDate(), time[0], time[1], time[2]);
-            this.selectedHour = this.parseHours(this.options.now.getHours());
-            this.selectedMin = this.parseSecMin(this.options.now.getMinutes());
-            this.selectedSec = this.parseSecMin(this.options.now.getSeconds());
-            this.selectedMeridiem = this.parseMeridiem(this.options.now.getHours());              
+            this.repr.hour = this.options.now.getHours();
+            this.repr.minute = this.options.now.getMinutes();
+            this.repr.second = this.options.now.getSeconds();
 
             this.setText(this.element);
 
             var inputValue = $(this.element).val();
-            return (inputValue === '') ? this.formatTime(this.selectedHour, this.selectedMin, this.selectedMeridiem, this.selectedSec) : inputValue;
+            return (inputValue === '') ? this.formatTime(this.getHours(), this.getMinutes(), this.getMeridiem(), this.getSeconds()) : inputValue;
         },
         _setTimeFromComponents: function (obj) {
             if (!obj.hour) {
@@ -630,36 +584,37 @@
                 obj.second = 0;
             }
             this.options.now = new Date(today.getFullYear(),today.getMonth(),today.getDate(),obj.hour,obj.minute,obj.second);
-            this.selectedHour = this.parseHours(obj.hour);
-            this.selectedMin = this.parseSecMin(obj.minute);
-            this.selectedSec = this.parseSecMin(obj.second);
-            this.selectedMeridiem = this.parseMeridiem(this.options.now.getHours());
+            this.repr.hour = obj.hour;
+            this.repr.minute = obj.minute;
+            this.repr.second = obj.second;
             this.setText(this.element);
 
             var inputValue = $(this.element).val();
             return (inputValue === '') ? this.formatTime(this.selectedHour, this.selectedMin, this.selectedMeridiem, this.selectedSec) : inputValue;
-            
+
         },
         _hide: function() {
             this.hideTimepicker(this.element);
         }
     });
 
-    //optional index if multiple inputs share the same class
-    $.fn[pluginName] = function (options, params) {
-        if (!$.isFunction(Wickedpicker.prototype['_' + options])) {
+    // Define plugin function: 'op' is the name of the operation and 'params' is
+    // an optional dictionary of parameters which may include 'index' for
+    // accessing an element within a result set.
+    $.fn[pluginName] = function (op, params) {
+        if (!$.isFunction(Wickedpicker.prototype['_' + op])) {
             return this.each(function () {
                 if (!$.data(this, "plugin_" + pluginName)) {
-                    $.data(this, "plugin_" + pluginName, new Wickedpicker(this, options));
+                    $.data(this, "plugin_" + pluginName, new Wickedpicker(this, op));
                 }
             });
         }
         else if ($(this).hasClass('hasWickedpicker')) {
-            if (params.index) {
-                return $.data($(this)[params.index], 'plugin_' + pluginName)['_' + options](params);
+            if (params && params.index) {
+                return $.data($(this)[params.index], 'plugin_' + pluginName)['_' + op](params);
             }
             else {
-                return $.data($(this)[0], 'plugin_' + pluginName)['_' + options](params);
+                return $.data($(this)[0], 'plugin_' + pluginName)['_' + op](params);
             }
         }
 
