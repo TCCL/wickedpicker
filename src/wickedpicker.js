@@ -53,6 +53,9 @@
             onClickOutside: function() {},
         };
 
+    // The Wickedpicker associated with the global picker widget.
+    var pickerAssociation = null;
+
     /*
      * @param {object} The input object the timepicker is attached to.
      * @param {object} The object containing options
@@ -102,6 +105,7 @@
             }
             var timepickerPos = $(element).offset();
 
+            pickerAssociation = this;
             $(element).attr({'aria-showingpicker': 'true', 'tabindex': -1});
             this.setText(element);
             this.showHideMeridiemControl();
@@ -148,6 +152,7 @@
             }
 
             pickerHidden.start().then(setTabIndex(0));
+            pickerAssociation = null;
         },
 
         /*
@@ -221,7 +226,7 @@
                     } else if ($(event.target).closest(self.timepicker).length || $(event.target).closest($('.hasWickedpicker')).length) {
                         //Clicking the Wickedpicker or one of it's inputs
                         event.stopPropagation();
-                    } else {   //Everything else
+                    } else if (self === pickerAssociation) {   //Everything else
                         if (typeof self.options.onClickOutside === 'function') {
                             self.options.onClickOutside();
                         }
