@@ -601,13 +601,52 @@
             var inputValue = $(this.element).val();
             return (inputValue === '') ? this.formatTime(this.selectedHour, this.selectedMin, this.selectedMeridiem, this.selectedSec) : inputValue;
         },
+        _setTimeFromString: function (params) {
+            if (!params.stringTime) {
+                throw "wickedpicker('setTimeFromString') requires params.stringTime";
+            }
+            this.options.now = params.stringTime;
+
+            var time = this.timeArrayFromString(this.options.now);
+            this.options.now = new Date(today.getFullYear(), today.getMonth(), today.getDate(), time[0], time[1], time[2]);
+            this.selectedHour = this.parseHours(this.options.now.getHours());
+            this.selectedMin = this.parseSecMin(this.options.now.getMinutes());
+            this.selectedSec = this.parseSecMin(this.options.now.getSeconds());
+            this.selectedMeridiem = this.parseMeridiem(this.options.now.getHours());              
+
+            this.setText(this.element);
+
+            var inputValue = $(this.element).val();
+            return (inputValue === '') ? this.formatTime(this.selectedHour, this.selectedMin, this.selectedMeridiem, this.selectedSec) : inputValue;
+        },
+        _setTimeFromComponents: function (obj) {
+            if (!obj.hour) {
+                throw "wickedpicker('setTimeFromComponents') requires params.hour";
+            }
+            if (!obj.minute) {
+                obj.minute = 0;
+            }
+            if (!obj.second) {
+                obj.second = 0;
+            }
+            this.options.now = new Date(today.getFullYear(),today.getMonth(),today.getDate(),obj.hour,obj.minute,obj.second);
+            this.selectedHour = this.parseHours(obj.hour);
+            this.selectedMin = this.parseSecMin(obj.minute);
+            this.selectedSec = this.parseSecMin(obj.second);
+            this.selectedMeridiem = this.parseMeridiem(this.options.now.getHours());
+            this.setText(this.element);
+
+            var inputValue = $(this.element).val();
+            return (inputValue === '') ? this.formatTime(this.selectedHour, this.selectedMin, this.selectedMeridiem, this.selectedSec) : inputValue;
+            
+        },
         _hide: function() {
             this.hideTimepicker(this.element);
         }
     });
 
     //optional index if multiple inputs share the same class
-    $.fn[pluginName] = function (options, index) {
+    $.fn[pluginName] = function (options, params) {
         if (!$.isFunction(Wickedpicker.prototype['_' + options])) {
             return this.each(function () {
                 if (!$.data(this, "plugin_" + pluginName)) {
@@ -616,13 +655,15 @@
             });
         }
         else if ($(this).hasClass('hasWickedpicker')) {
-            if (index !== undefined) {
-                return $.data($(this)[index], 'plugin_' + pluginName)['_' + options]();
+            if (params.index) {
+                return $.data($(this)[params.index], 'plugin_' + pluginName)['_' + options](params);
             }
             else {
-                return $.data($(this)[0], 'plugin_' + pluginName)['_' + options]();
+                return $.data($(this)[0], 'plugin_' + pluginName)['_' + options](params);
             }
         }
+
+        throw "Bad call to wickedpicker plugin function";
     };
 
 })(jQuery, window, document);
