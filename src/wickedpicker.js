@@ -110,6 +110,7 @@
             this.setText(element);
             this.showHideMeridiemControl();
             this.setTime();
+            this.timepicker.find(".wickedpicker__title").text(this.options.title);
             this.timepicker.css({
                 'z-index': this.element.css('z-index') + 1,
                 position: 'absolute',
