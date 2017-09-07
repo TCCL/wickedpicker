@@ -598,6 +598,15 @@
             return (inputValue === '') ? this.formatTime(this.selectedHour, this.selectedMin, this.selectedMeridiem, this.selectedSec) : inputValue;
 
         },
+        _setOptions: function(params) {
+            var keys = Object.keys(params);
+
+            for (var i = 0;i < keys.length;++i) {
+                if (this.options[keys[i]]) {
+                    this.options[keys[i]] = params[keys[i]];
+                }
+            }
+        },
         _hide: function() {
             this.hideTimepicker(this.element);
         }
